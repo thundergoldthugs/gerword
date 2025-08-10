@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>German Word Drills — Flashcards</title>
+<style>
+  :root{
+    --bg:#0f1226;--card:#171a36;--text:#eef1ff;--muted:#b7c0ff;--accent:#6c8cff;
+    --good:#19c37d;--bad:#ff5b5b;--shadow:0 10px 25px rgba(0,0,0,.25)
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:radial-gradient(1200px 800px at 80% -10%,#22285b 0%,#0f1226 50%),
+                 radial-gradient(800px 600px at -10% 110%,#1b2047 0%,#0f1226 60%);
+    color:var(--text);font:16px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:24px
+  }
+  .app{width:clamp(320px, 92vw, 880px)}
+  header{
+    display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px
+  }
+  .title{font-weight:800;letter-spacing:.3px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button,select{
+    background:#212651;border:1px solid #333a77;color:var(--text);
+    border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;
+    box-shadow:var(--shadow);transition:.18s transform,.18s opacity,.2s background;
+  }
+  button:active{transform:translateY(1px) scale(.99)}
+  button.secondary{background:#161938;border-color:#2a2f63;box-shadow:none}
+  button.good{background:var(--good);border-color:#0ea165;color:#062616}
+  button.bad{background:var(--bad);border-color:#d33d3d}
+  button.ghost{background:transparent;border:1px dashed #3b4185}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .stats{
+    display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-weight:600
+  }
+  .pill{background:#15173a;border:1px solid #2b2f63;padding:6px 10px;border-radius:999px}
+  .progress{
+    height:9px;background:#121433;border-radius:999px;overflow:hidden;border:1px solid #2a2f63;margin:10px 0 18px
+  }
+  .progress>span{display:block;height:100%;background:linear-gradient(90deg,#6c8cff,#9aa8ff);width:0%}
+  .cardWrap{perspective:1200px;margin-top:4px}
+  .card{
+    position:relative;background:var(--card);border:1px solid #2a2f63;border-radius:18px;
+    padding:34px 22px;min-height:210px;display:flex;align-items:center;justify-content:center;
+    text-align:center;box-shadow:var(--shadow);transform-style:preserve-3d;transition:transform .5s ease;
+    user-select:none
+  }
+  .card.flipped{transform:rotateY(180deg)}
+  .face{
+    position:absolute;inset:0;padding:34px 22px;display:flex;align-items:center;justify-content:center;
+    backface-visibility:hidden
+  }
+  .back{transform:rotateY(180deg)}
+  .langTag{
+    position:absolute;top:10px;right:12px;font-size:12px;color:var(--muted);opacity:.9
+  }
+  .word{font-size:clamp(22px, 4vw, 36px);font-weight:800;letter-spacing:.3px}
+  .sub{margin-top:8px;color:#bcc6ff}
+  .controls{display:flex;gap:10px;justify-content:center;margin:16px 0 6px;flex-wrap:wrap}
+  .divider{height:1px;background:#2a2f63;margin:14px 0}
+  dialog{
+    border:none;border-radius:16px;background:#0f1230;color:var(--text);padding:0;max-width:720px;width:min(92vw,720px)
+  }
+  dialog::backdrop{background:rgba(0,0,0,.55)}
+  .sheet{padding:18px}
+  textarea{
+    width:100%;min-height:180px;background:#0a0d25;border:1px solid #2a2f63;border-radius:12px;color:var(--text);
+    padding:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace
+  }
+  .kbd{font:600 12px/1.6 ui-monospace,monospace;background:#0e1130;border:1px solid #2b2f63;border-radius:6px;padding:2px 6px}
+  .footerRow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .hidden{display:none !important}
+  .empty{opacity:.8;text-align:center;padding:24px}
+  a.inline{color:#aebaff}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="row">
+        <div class="title">🃏 German Word Drills</div>
+        <div class="stats">
+          <span class="pill" id="statRound">Round 1</span>
+          <span class="pill" id="statScore">Score 0</span>
+          <span class="pill" id="statStreak">Streak 0</span>
+        </div>
+      </div>
+      <div class="toolbar">
+        <select id="mode">
+          <option value="de-en">German → English</option>
+          <option value="en-de">English → German</option>
+          <option value="mix">Mix (both ways)</option>
+        </select>
+        <button class="secondary" id="shuffleBtn" title="Shuffle deck">Shuffle</button>
+        <button class="secondary" id="repeatFullBtn" title="Restart round">Repeat Round</button>
+        <button id="addBtn">Add / Import</button>
+        <button class="secondary" id="exportBtn">Export</button>
+        <button class="ghost" id="resetBtn" title="Remove all words & stats">Reset</button>
+      </div>
+    </header>
+
+    <div class="progress"><span id="progressBar"></span></div>
+
+    <div id="studyArea">
+      <div class="cardWrap">
+        <div class="card" id="card">
+          <div class="face front">
+            <div class="langTag" id="frontTag">German</div>
+            <div>
+              <div class="word" id="frontWord">–</div>
+              <div class="sub" id="frontHint"></div>
+            </div>
+          </div>
+          <div class="face back">
+            <div class="langTag" id="backTag">English</div>
+            <div>
+              <div class="word" id="backWord">–</div>
+              <div class="sub" id="backHint"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="flipBtn" class="secondary" title="Space">Flip</button>
+        <button id="againBtn" class="bad" title="A">Again</button>
+        <button id="goodBtn" class="good" title="G">Got it</button>
+      </div>
+      <div class="hint">keys: <span class="kbd">space</span> flip ·
+        <span class="kbd">A</span> again · <span class="kbd">G</span> got it · <span class="kbd">←/→</span> previous/next
+      </div>
+    </div>
+
+    <div id="emptyState" class="empty hidden">
+      <p>No words yet. Click <b>Add / Import</b> to paste your list.</p>
+      <p>Format: <code>Haus - house</code> or <code>gehen, to go</code> or tab-separated.</p>
+    </div>
+  </div>
+
+  <!-- Add / Import dialog -->
+  <dialog id="importDialog">
+    <div class="sheet">
+      <h3 style="margin:0 0 10px">Add / Import Words</h3>
+      <p style="margin:0 0 8px;color:#c9d1ff">Paste lines like:
+        <code>Haus - house</code>, <code>gehen : to go</code>, <code>weil\tbecause</code>.
+        I’ll parse <i>dash</i>, <i>colon</i>, <i>comma</i>, or <i>tab</i>.
+      </p>
+      <textarea id="importText" placeholder="Haus - house
+gehen : to go
+der Tisch, the table"></textarea>
+      <div class="row" style="margin:10px 0 0">
+        <label><input type="checkbox" id="swapOnImport"> English first (swap columns)</label>
+      </div>
+      <div class="footerRow" style="margin-top:14px">
+        <div class="row">
+          <button class="secondary" id="closeImport">Cancel</button>
+        </div>
+        <div class="row">
+          <button class="secondary" id="appendSample">Add sample 10</button>
+          <button id="importBtn">Import</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- End-of-round dialog -->
+  <dialog id="roundDialog">
+    <div class="sheet">
+      <h3 style="margin:0 0 8px">Round complete 🎉</h3>
+      <div id="roundSummary" style="margin:6px 0 12px;color:#c9d1ff"></div>
+      <div class="footerRow">
+        <button class="secondary" id="endClose">Close</button>
+        <div class="row">
+          <button id="repeatMissed">Repeat missed</button>
+          <button id="repeatAll">Repeat full deck</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+<script>
+/* ---------- Storage & Deck ---------- */
+const LS_KEY = "german_flashcards_deck_v1";
+const LS_STATS = "german_flashcards_stats_v1";
+
+function loadDeck(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(v => v && v.de && v.en) : [];
+  }catch(e){ return [] }
+}
+function saveDeck(deck){ localStorage.setItem(LS_KEY, JSON.stringify(deck)); }
+
+function loadStats(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_STATS) || "{}");
+    return {score:s.score||0, streak:s.streak||0, round:s.round||1};
+  }catch(e){ return {score:0,streak:0,round:1} }
+}
+function saveStats(){ localStorage.setItem(LS_STATS, JSON.stringify(stats)); }
+
+let deck = loadDeck();
+let stats = loadStats();
+
+/* Provide a small starter if empty */
+if(deck.length === 0){
+  deck = [
+    {de:"Haus", en:"house"},
+    {de:"gehen", en:"to go"},
+    {de:"der Tisch", en:"the table"},
+    {de:"schön", en:"beautiful"},
+    {de:"lernen", en:"to learn"},
+    {de:"Buch", en:"book"},
+    {de:"sprechen", en:"to speak"},
+    {de:"Freund", en:"friend"},
+    {de:"Essen", en:"food"},
+    {de:"trinken", en:"to drink"}
+  ];
+  saveDeck(deck);
+}
+
+/* ---------- Session State ---------- */
+let modeSel = document.getElementById('mode');
+let queue = [];        // indices into deck for this round
+let missed = new Set();// indices missed in current round
+let pos = 0;           // position in queue
+let showingBack = false;
+let mixDirections = []; // if mode = mix, per-card direction
+
+function shuffleArray(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function buildRound({shuffle=true, fromMissed=false}={}){
+  const allIdx = deck.map((_,i)=>i);
+  const base = fromMissed ? Array.from(missed) : allIdx;
+  queue = shuffle ? shuffleArray([...base]) : [...base];
+  mixDirections = queue.map(()=> Math.random()<0.5 ? "de-en" : "en-de");
+  pos = 0; missed.clear();
+  showingBack = false;
+  updateProgress();
+  renderCard();
+}
+
+function currentPair(){
+  if(queue.length===0) return null;
+  const idx = queue[pos];
+  const pair = deck[idx];
+  let dir = modeSel.value === "mix" ? mixDirections[pos] : modeSel.value;
+  return {idx, pair, dir};
+}
+
+/* ---------- UI Updates ---------- */
+const frontWord = document.getElementById('frontWord');
+const backWord  = document.getElementById('backWord');
+const frontTag  = document.getElementById('frontTag');
+const backTag   = document.getElementById('backTag');
+const cardEl    = document.getElementById('card');
+const frontHint = document.getElementById('frontHint');
+const backHint  = document.getElementById('backHint');
+
+function renderCard(){
+  const empty = deck.length===0;
+  document.getElementById('studyArea').classList.toggle('hidden', empty);
+  document.getElementById('emptyState').classList.toggle('hidden', !empty);
+  if(empty){ return; }
+
+  const cur = currentPair();
+  if(!cur){ return; }
+  const {pair, dir} = cur;
+
+  const showFront = dir==="de-en" ? pair.de : pair.en;
+  const showBack  = dir==="de-en" ? pair.en : pair.de;
+  frontWord.textContent = showFront;
+  backWord.textContent  = showBack;
+
+  frontTag.textContent = dir==="de-en" ? "German" : "English";
+  backTag.textContent  = dir==="de-en" ? "English" : "German";
+
+  frontHint.textContent = "";
+  backHint.textContent  = "";
+  cardEl.classList.toggle('flipped', showingBack);
+  updateHeader();
+}
+
+function updateHeader(){
+  document.getElementById('statRound').textContent = `Round ${stats.round}`;
+  document.getElementById('statScore').textContent = `Score ${stats.score}`;
+  document.getElementById('statStreak').textContent = `Streak ${stats.streak}`;
+}
+
+function updateProgress(){
+  const done = queue.length===0 ? 0 : (pos/queue.length)*100;
+  document.getElementById('progressBar').style.width = `${done}%`;
+}
+
+/* ---------- Actions ---------- */
+function flip(){
+  showingBack = !showingBack;
+  cardEl.classList.toggle('flipped', showingBack);
+}
+
+function nextCard(){
+  if(queue.length===0) return;
+  pos = Math.min(pos+1, queue.length); // move pointer forward
+  showingBack = false;
+  if(pos >= queue.length){
+    endRound();
+  }else{
+    renderCard();
+    updateProgress();
+  }
+}
+
+function prevCard(){
+  if(pos<=0) return;
+  pos -= 1; showingBack=false; renderCard(); updateProgress();
+}
+
+function markGood(){
+  const cur = currentPair(); if(!cur) return;
+  // reward
+  stats.streak += 1;
+  stats.score += 10 + Math.min(30, stats.streak); // lil streak bonus
+  saveStats();
+  // move on
+  nextCard();
+}
+
+function markAgain(){
+  const cur = currentPair(); if(!cur) return;
+  stats.streak = 0; saveStats();
+  missed.add(cur.idx);
+  // reinsert this card a few steps ahead (lightweight spaced repetition)
+  const insertAt = Math.min(queue.length, pos + 3);
+  queue.splice(insertAt, 0, cur.idx);
+  nextCard();
+}
+
+function endRound(){
+  // compile summary
+  const total = new Set(queue).size; // approximate
+  const missCount = missed.size;
+  showRoundDialog({total, missCount});
+  stats.round += 1; saveStats();
+  document.getElementById('progressBar').style.width = `100%`;
+}
+
+/* ---------- Round Dialog ---------- */
+const roundDlg = document.getElementById('roundDialog');
+function showRoundDialog({total, missCount}){
+  const el = document.getElementById('roundSummary');
+  el.textContent = `You finished the round. Missed ${missCount} card${missCount!==1?'s':''}.`;
+  roundDlg.showModal();
+}
+document.getElementById('repeatMissed').onclick = ()=>{
+  const any = missed.size>0;
+  roundDlg.close();
+  if(!any){ buildRound({shuffle:true, fromMissed:false}); return; }
+  buildRound({shuffle:true, fromMissed:true});
+};
+document.getElementById('repeatAll').onclick = ()=>{
+  roundDlg.close(); buildRound({shuffle:true, fromMissed:false});
+};
+document.getElementById('endClose').onclick = ()=> roundDlg.close();
+
+/* ---------- Import / Export ---------- */
+const importDlg = document.getElementById('importDialog');
+document.getElementById('addBtn').onclick = ()=> importDlg.showModal();
+document.getElementById('closeImport').onclick = ()=> importDlg.close();
+
+function parseLines(text, swap=false){
+  const out = [];
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  for(const line of lines){
+    // split by tab, dash, colon, or comma – but keep multi-word entries
+    const parts = line.split(/\t| - | – | — |:|, /);
+    if(parts.length<2) continue;
+    let left = parts[0].trim();
+    let right = parts.slice(1).join(" ").trim(); // in case there are extra commas
+    if(swap) [left,right] = [right,left];
+    // Heuristic: if either side contains " / " provide a hint (optional)
+    out.push({de:left, en:right});
+  }
+  return out;
+}
+
+document.getElementById('importBtn').onclick = ()=>{
+  const txt = document.getElementById('importText').value;
+  const swap = document.getElementById('swapOnImport').checked;
+  const items = parseLines(txt, swap);
+  if(items.length===0){ alert("Nothing to import. Paste lines like 'Haus - house'."); return; }
+  // de-duplicate by exact de+en pair
+  const key = x=> `${x.de}||${x.en}`.toLowerCase();
+  const existing = new Set(deck.map(key));
+  const toAdd = items.filter(x=>!existing.has(key(x)));
+  deck.push(...toAdd);
+  saveDeck(deck);
+  importDlg.close();
+  document.getElementById('importText').value="";
+  // start new round including new words
+  buildRound({shuffle:true});
+};
+
+document.getElementById('appendSample').onclick = ()=>{
+  const sample = [
+    {de:"die Stadt",en:"city"}, {de:"arbeiten",en:"to work"}, {de:"schnell",en:"fast"},
+    {de:"langsam",en:"slow"}, {de:"teuer",en:"expensive"}, {de:"billig",en:"cheap"},
+    {de:"fragen",en:"to ask"}, {de:"antworten",en:"to answer"}, {de:"müde",en:"tired"},
+    {de:"glücklich",en:"happy"}
+  ];
+  const ex = new Set(deck.map(d=>`${d.de}|${d.en}`));
+  deck.push(...sample.filter(d=>!ex.has(`${d.de}|${d.en}`)));
+  saveDeck(deck);
+  alert("Added 10 sample words.");
+  buildRound({shuffle:true});
+};
+
+document.getElementById('exportBtn').onclick = ()=>{
+  const rows = deck.map(d=>`${d.de}\t${d.en}`).join("\n");
+  const blob = new Blob([rows], {type:"text/tab-separated-values;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'german_words.tsv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+};
+
+/* ---------- Controls ---------- */
+document.getElementById('flipBtn').onclick = flip;
+document.getElementById('goodBtn').onclick = markGood;
+document.getElementById('againBtn').onclick = markAgain;
+document.getElementById('shuffleBtn').onclick = ()=> buildRound({shuffle:true});
+document.getElementById('repeatFullBtn').onclick = ()=> buildRound({shuffle:true, fromMissed:false});
+document.getElementById('resetBtn').onclick = ()=>{
+  if(!confirm("This will clear ALL words & stats. Continue?")) return;
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_STATS);
+  deck = []; stats = {score:0,streak:0,round:1};
+  buildRound({shuffle:true});
+};
+
+modeSel.onchange = ()=> renderCard();
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', (e)=>{
+  if((importDlg.open || roundDlg.open)) return;
+  if(e.code==='Space'){ e.preventDefault(); flip(); }
+  else if(e.key==='g' || e.key==='G'){ markGood(); }
+  else if(e.key==='a' || e.key==='A'){ markAgain(); }
+  else if(e.key==='ArrowRight'){ nextCard(); }
+  else if(e.key==='ArrowLeft'){ prevCard(); }
+});
+
+/* Click to flip anywhere on the card */
+document.getElementById('card').addEventListener('click', (e)=>{
+  // ignore if clicked on buttons
+  if(e.target.closest('button')) return;
+  flip();
+});
+
+/* ---------- Boot ---------- */
+function boot(){
+  updateHeader();
+  if(deck.length===0){
+    document.getElementById('studyArea').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+  }else{
+    buildRound({shuffle:true});
+  }
+}
+boot();
+</script>
+</body>
+</html>
